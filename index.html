@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/v/bs5/dt-2.0.3/r-3.0.1/datatables.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css" />
+    <style>
+        body{
+            margin: 0;
+            padding: 0;
+            /* width: 100vw; */
+            height: 100vh;
+            margin-bottom: 8px;
+        }
+        .form-floating-group input {
+            border-bottom-right-radius: 0;
+            border-top-right-radius: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <div class="accordion mt-3">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="panel-header1">
+                            <button class="accordion-button bg-primary-subtle " type="button" data-bs-toggle="collapse"
+                                data-bs-target="#panel-body1" aria-expanded="true"
+                                aria-controls="panel-body1">
+                                物件查詢
+                            </button>
+                        </h2>
+                        <div id="panel-body1" class="accordion-collapse collapse show" aria-labelledby="panel-header1">
+                            <div class="accordion-body">
+                                <div class="row g-2">
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <label for="objectName" class="form-label">案名、區域</label>
+                                        <input type="text" class="form-control" id="objectName" placeholder="關鍵字加空格可複選">
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <label for="objectType" class="form-label">物件類型</label>
+                                        <select class="form-select" id="objectType">
+                                            <option value="">自行勾選</option>
+                                            <option value="Building">建物</option>
+                                            <option value="Land">土地</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <div class="mt-2">
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input objectPattern objectPattern-building" type="checkbox" id="objectPattern1" value="公寓" />
+                                                <label class="form-check-label" for="objectPattern1">公寓</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input objectPattern objectPattern-building" type="checkbox" id="objectPattern2" value="大樓" />
+                                                <label class="form-check-label" for="objectPattern2">大樓</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input objectPattern objectPattern-building" type="checkbox" id="objectPattern3" value="透天" />
+                                                <label class="form-check-label " for="objectPattern3">透天</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input objectPattern objectPattern-building" type="checkbox" id="objectPattern6" value="別墅" />
+                                                <label class="form-check-label" for="objectPattern6">別墅</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input objectPattern objectPattern-building" type="checkbox" id="objectPattern7" value="農舍" />
+                                                <label class="form-check-label" for="objectPattern7">農舍</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input objectPattern objectPattern-building" type="checkbox" id="objectPattern8" value="廠辦" />
+                                                <label class="form-check-label" for="objectPattern8">廠辦</label>
+                                            </div>    
+                                        </div>
+                                        <div class="mt-2">
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input objectPattern objectPattern-land" type="checkbox" id="objectPattern9" value="建地" />
+                                                <label class="form-check-label" for="objectPattern9">建地</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input objectPattern objectPattern-land" type="checkbox" id="objectPattern10" value="農地" />
+                                                <label class="form-check-label" for="objectPattern10">農地</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input objectPattern objectPattern-land" type="checkbox" id="objectPattern11" value="工業地" />
+                                                <label class="form-check-label" for="objectPattern11">工業地</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input objectPattern objectPattern-land" type="checkbox" id="objectPattern12" value="土地" />
+                                                <label class="form-check-label" for="objectPattern12">特殊土地</label>
+                                            </div>                                                                                        
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <label class="form-label">總價(萬)/租金(元)</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="valuationFrom" placeholder="最小值">
+                                            <span class="input-group-text">~</span>
+                                            <input type="text" class="form-control" id="valuationTo" placeholder="最大值">
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <label class="form-label">地坪</label>
+                                        <div class="input-group ">
+                                            <input type="text" class="form-control" id="landSizeFrom" placeholder="最小值">
+                                            <span class="input-group-text">~</span>
+                                            <input type="text" class="form-control" id="landSizeTo" placeholder="最大值">
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <!-- <label for="searchBtn" class="form-label">&nbsp;</label> -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="panel-header2">
+                            <button class="accordion-button collapsed bg-dark-subtle" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#panel-body2" aria-expanded="false"
+                                aria-controls="panel-body2">
+                                進階條件
+                            </button>
+                        </h2>
+                        <div id="panel-body2" class="accordion-collapse collapse" aria-labelledby="panel-header2">
+                            <div class="accordion-body">
+                                <div class="row g-2">                                    
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <label for="roadNearby" class="form-label">臨路</label>
+                                        <select class="form-select" id="roadNearby">
+                                            <option value="">不限</option>
+                                            <option value="0|4.9">4米內
+                                            <option value="5|6.9">5~7米</option>
+                                            <option value="8|99">8米以上</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <label for="objectWidth" class="form-label">面寬</label>
+                                        <div class="input-group ">
+                                            <input type="text" class="form-control" id="objectWidthFrom" placeholder="最小值">
+                                            <span class="input-group-text">~</span>
+                                            <input type="text" class="form-control" id="objectWidthTo" placeholder="最大值">
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <label class="form-label">房數</label>
+                                        <div class="input-group ">
+                                            <input type="text" class="form-control" id="roomFrom" placeholder="最小值">
+                                            <span class="input-group-text">~</span>
+                                            <input type="text" class="form-control" id="roomTo" placeholder="最大值">
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <label for="objectType" class="form-label">停車位</label>
+                                        <select class="form-select" id="isHasParkingSpace">
+                                            <option value="">不限</option>
+                                            <option value="0">無</option>
+                                            <option value="1">有</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <label class="form-label">建物完成年</label>
+                                        <div class="input-group ">
+                                            <input type="text" class="form-control" id="buildingAgeFrom" placeholder="最小值">
+                                            <span class="input-group-text">~</span>
+                                            <input type="text" class="form-control" id="buildingAgeTo" placeholder="最大值">
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <label for="direction" class="form-label">座向</label>
+                                        <select class="form-select" id="direction">
+                                            <option value="">不限</option>
+                                            <option value="座東朝西">座東朝西</option>
+                                            <option value="座西朝東">座西朝東</option>
+                                            <option value="座南朝北">座南朝北</option>
+                                            <option value="座北朝南">座北朝南</option>
+                                            <option value="座東北朝西南">座東北朝西南</option>
+                                            <option value="座東南朝西北">座東南朝西北</option>
+                                            <option value="座西北朝東南">座西北朝東南</option>
+                                            <option value="座西南朝東北">座西南朝東北</option>
+                                        </select>
+                                    </div>                                    
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <label for="contractType" class="form-label">合約類型</label>
+                                        <select class="form-select" id="contractType">
+                                            <option value="">全部</option>
+                                            <option value="口頭約">口頭約</option>
+                                            <option value="一般約">一般約</option>
+                                            <option value="專任約">專任約</option>
+                                            <option value="同行轉拋">同行轉拋</option>
+                                            <option value="租賃">租賃</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-4 col-md-6 col-12">
+                                        <label for="contactPeron" class="form-label">開發業務</label>
+                                        <input type="text" class="form-control" id="contactPeron" placeholder="輸入業務姓名">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>                    
+                </div>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-lg-2 offset-lg-4 col-md-3 offset-md-3 col-6">
+                <div class="d-grid">
+                    <button class="btn btn-danger  btn" id="clearBtn">清除</button>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-3 col-6">
+                <div class="d-grid">
+                    <button class="btn btn-primary btn" id="searchBtn">搜尋</button>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12">
+                <table id="searchObjectTable" class="table table-bordered responsive display nowrap" style="width:100%"></table>
+
+            </div>
+        </div>
+    </div>
+    <div class="modal" tabindex="-1" id="showObjectInfoModal">
+        <div class="modal-dialog">
+        </div>
+    </div>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/v/bs5/dt-2.0.3/r-3.0.1/datatables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.blockUI/2.70/jquery.blockUI.min.js"></script>
+<script>
+    var data = [];
+    var dataTable;
+    var toggleExpansionStatus = false;
+    $(document).ready(function() {
+        feather.replace();
+        $("#searchObjectTable").on("preInit.dt", function () {
+            $toggleExpanBtn = $("<button type='button' class='btn btn-sm btn-primary'>全部展開/摺疊</button>");
+            $("#searchObjectTable_wrapper .dt-length label").append("&emsp;").append($toggleExpanBtn);
+            $toggleExpanBtn.click(function(){
+                toggleTableExpansion(!toggleExpansionStatus);
+            });
+        });
+        dataTable = new DataTable('#searchObjectTable', {
+            pagingType: "full_numbers",
+            processing: true,
+            reponsive: true,
+            data: data,
+            columns: [
+                { 
+                    title: "案名",
+                    name: "objectName",
+                    data: "objectName",
+                    responsivePriority: 1,
+                    render: function(data, type, row) {
+                        var pictureLinkBtn = '';
+                        if(row.pictureLink != '' && row.pictureLink != null){
+                            pictureLinkBtn = '<a style="color:black" class="m-2" href="' + row.pictureLink + '" target="_blank"><i class="fa fa-picture-o"></i></a>';
+                        }
+                        return row.objectNumber + ' ' + data + pictureLinkBtn;
+                    }
+
+                },
+                { 
+                    title: "總價",
+                    name: "valuation",
+                    data: "valuation",
+                    responsivePriority: 2,
+                    render: function(data, type, row) {
+                        return data;
+                    }
+                },
+                { 
+                    title: "地坪",
+                    name: "landSize",
+                    data: "landSize",
+                    responsivePriority: 2,
+                    render: function(data, type, row) {
+                        return data;
+                    }
+                },
+                { 
+                    title: "建坪",
+                    name: "buildingSize",
+                    data: "buildingSize",
+                    responsivePriority: 3,
+                    render: function(data, type, row) {
+                        return data;
+                    }
+                },
+                { 
+                    title: "格局",
+                    name: "housePattern",
+                    data: "housePattern",
+                    responsivePriority: 3,
+                    render: function(data, type, row) {
+                        return data;
+                    }
+                },
+                { 
+                    title: "地址",
+                    name: "address",
+                    data: "address",
+                    responsivePriority: 3,
+                    render: function(data, type, row) {
+                        if(row.position == null || row.position == '') {
+                            return row.location + row.address;
+                        } else {
+                            var positionType = 0;
+                            var positionValue = row.position.split(' ')[0]
+                            if(row.position.indexOf(',') > -1) {
+                                positionType = 0;
+                            } else {
+                                positionType = 1;
+                            }
+                            if(positionType == 0) {
+                                return '<a href="https://maps.google.com/?q=' + encodeURIComponent(positionValue) + '" target="_blank">' + row.location + row.address + '</a>';
+                            } else {
+                                if(positionValue.length == 8) {
+                                    positionValue = '7QJ2' + positionValue;
+                                }
+                                return '<a href="https://www.google.com.tw/maps/place/' + encodeURIComponent(positionValue) + '" target="_blank">' + row.location + row.address + '</a>';
+                            
+                            }
+                        }
+                    }
+                },
+                { 
+                    title: "",
+                    name: "sequenceNumberInSheet",
+                    data: "sequenceNumberInSheet",
+                    responsivePriority: 1,
+                    render: function(data, type, row) {
+                        var html = "";
+                        var infoBtn = $("<button>").addClass("btn btn-sm btn-info text-white").text(" 詳細 ").append($("<i>").addClass("fa fa-pencil")).attr("onclick", "showObjectInfo('" + row.objectType + "', '" + data + "')");
+                        var chooseA4Btn = $("<button>").addClass("btn btn-sm btn-dark text-white").text(" 文件 ").append($("<i>").addClass("fa fa-file-text-o")).attr("onclick", "showDocInfo('" + row.objectType + "', '" + data + "')");
+
+                        var btn_list = {};
+                        btn_list[0] = infoBtn;
+                        btn_list[1] = chooseA4Btn; 
+                        for (var x in btn_list) {
+                            html += $('<span>').addClass('m-2').append(btn_list[x]).prop('outerHTML');
+                        }
+                        return html;
+                    }
+                }
+            ]
+        });
+
+        $("#objectType").on('change', function() {
+            var objectType = $(this).val();
+            if(objectType == 'Building') {
+                $(".objectPattern-building").prop('checked', true);
+                $(".objectPattern-land").prop('checked', false);
+            } else if(objectType == 'Land') {
+                $(".objectPattern-building").prop('checked', false);
+                $(".objectPattern-land").prop('checked', true);
+            } else if(objectType == '') {
+                $(".objectPattern").prop('checked', true);
+            }
+        });
+        
+        $("#clearBtn").click(function() {
+            clearSearch();
+        });
+
+        $('#searchBtn').click(function() {
+            var contractType = $('#contractType').val();
+            var objectType = $('#objectType').val();
+            var objectName = $('#objectName').val();
+            var valuationFrom = $('#valuationFrom').val();
+            var valuationTo = $('#valuationTo').val();
+            var landSizeFrom = $('#landSizeFrom').val();
+            var landSizeTo = $('#landSizeTo').val();
+            var objectPattern = $(".objectPattern").map(function() {
+                if($(this).is(':checked')) {
+                    return $(this).val();
+                }
+            }).get();
+            var roadNearby = $('#roadNearby').val();
+            var roomFrom = $('#roomFrom').val();
+            var roomTo = $('#roomTo').val();
+            var isHasParkingSpace = $('#isHasParkingSpace').val();
+            var buildingAgeFrom = $('#buildingAgeFrom').val();
+            var buildingAgeTo = $('#buildingAgeTo').val();
+            var direction = $('#direction').val();
+            var objectWidthFrom = $('#objectWidthFrom').val();
+            var objectWidthTo = $('#objectWidthTo').val();
+            var contactPeron = $('#contactPeron').val();
+
+            $.blockUI({
+                message: "<h1>查詢中...</h1>",
+                css: {
+                    border: 'none',
+                    padding: '15px',
+                    backgroundColor: '#000',
+                    '-webkit-border-radius': '10px',
+                    '-moz-border-radius': '10px',
+                    opacity: .5,
+                    color: '#fff'
+                }
+            });
+
+            google.script.run.withSuccessHandler(onDataFetchSuccess).withFailureHandler(onDataFetchFailure).searchObjects(
+                contractType,
+                objectType,
+                objectPattern, 
+                objectName, 
+                valuationFrom,
+                valuationTo,
+                landSizeFrom,
+                landSizeTo,
+                roadNearby,
+                roomFrom,
+                roomTo,
+                isHasParkingSpace,
+                buildingAgeFrom,
+                buildingAgeTo,
+                direction,
+                objectWidthFrom,
+                objectWidthTo,
+                contactPeron);
+        });
+    });
+    
+    var onDataFetchSuccess = function(result) {
+        console.log(result);
+        dataTable.clear();
+        dataTable.rows.add(JSON.parse(result));
+        dataTable.draw();
+        $(window).trigger('resize');
+        $.unblockUI();
+    }
+    var onDataFetchFailure = function(result) {
+        console.log(result);
+        $.unblockUI();
+    }
+
+    function showObjectInfo(objectType, sequenceNumberInSheet) {
+        $("#showObjectInfoModal .modal-dialog").addClass("modal-xl");
+        $("#showObjectInfoModal").modal('show');
+        $('#showObjectInfoModal').on('hidden.bs.modal', function (e) {
+            $("#showObjectInfoModal .modal-dialog").html('');
+            $("#showObjectInfoModal .modal-dialog").removeClass("modal-xl");
+        });
+
+        google.script.run.withSuccessHandler(onShowInfoSuccess).withFailureHandler(onShowInfoFailure).showObjectInfo(objectType, sequenceNumberInSheet);
+    }
+
+    var onShowInfoSuccess = function(result) {
+        $("#showObjectInfoModal .modal-dialog").html(result);
+        //console.log(result);
+    }
+    var onShowInfoFailure = function(result) {
+        console.log(result);
+    }
+
+    function showDocInfo(objectType, sequenceNumberInSheet) {
+        google.script.run.withSuccessHandler(onShowDocSuccess).withFailureHandler(onShowDocFailure).showObjectA4Info(objectType, sequenceNumberInSheet);
+        $.blockUI({
+            message: "<h1>產生文件中...</h1>",
+            css: {
+                border: 'none',
+                padding: '15px',
+                backgroundColor: '#000',
+                '-webkit-border-radius': '10px',
+                '-moz-border-radius': '10px',
+                opacity: .5,
+                color: '#fff'
+            }
+        });
+    }
+
+    var onShowDocSuccess = function(result) {
+        //console.log('onShowDocSuccess:' + result);
+        window.open(result, '_blank');
+        $.unblockUI();
+    }
+    var onShowDocFailure = function(result) {
+        //console.log('onShowDocFailure:' + result);
+        $.unblockUI();
+    }
+
+
+    function clearSearch() {
+        $('#contractType').val('');
+        $('#objectType').val('');
+        $('#objectName').val('');
+        $('#valuationFrom').val('');
+        $('#valuationTo').val('');
+        $('#landSizeFrom').val('');
+        $('#landSizeTo').val('');
+        $(".objectPattern").prop('checked', false);
+        $('#roadNearby').val('');
+        $('#roomFrom').val('');
+        $('#roomTo').val('');
+        $('#isHasParkingSpace').val('');
+        $('#buildingAgeFrom').val('');
+        $('#buildingAgeTo').val('');
+        $('#direction').val('');
+        $('#objectWidthFrom').val('');
+        $('#objectWidthTo').val('');
+        $('#contactPeron').val('');
+    }
+
+    function toggleTableExpansion(isShown){
+        console.log(isShown);
+        if(isShown) {
+            console.log(1);
+            dataTable.rows(':not(.dtr-expanded)').nodes().to$().find('td:first-child').trigger('click');
+        } else {
+            console.log(2);
+            dataTable.rows('.dtr-expanded').nodes().to$().find('td:first-child').trigger('click');
+        }
+        toggleExpansionStatus = isShown;
+    }
+</script>
+</html>

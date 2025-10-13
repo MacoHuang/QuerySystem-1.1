@@ -1,0 +1,213 @@
+<div class="modal-content">
+    <div class="modal-header">
+        <h5 class="modal-title">建物詳細資訊</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+
+        <table class="table table-bordered table-sm table-hover">
+            <tbody>
+                <!-- <tr>
+                    <td>
+                        <label for="createTime">建立時間</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="createTime" id="createTime" value="<?!= buildingObject.createTime ?>">
+                    </td>
+                </tr> -->
+                <tr>
+                    <td>
+                        <label for="objectName">案名</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="objectName" id="objectName" value="<?!= buildingObject.objectName ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="contractType">合約</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="contractType" id="contractType" value="<?!= buildingObject.contractType ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="contractType">起訖</label>
+                    </td>
+                    <td>
+                        <div class="input-group">
+                            <input type="text"  class="form-control" name="contractDateFrom" id="contractDateFrom" value="<?!= buildingObject.contractDateFrom ?>">
+                            <div class="input-group-append">
+                                <span class="input-group-text"> ~ </span>
+                            </div>
+                            <input type="text"  class="form-control" name="contractDateTo" id="contractDateTo" value="<?!= buildingObject.contractDateTo ?>">
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="location">地區</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="location" id="location" value="<?!= buildingObject.location ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="address">地址</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="address" id="address" value="<?!= buildingObject.address ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="position">位置</label>
+                    </td>
+                    <td>
+                        <? if(buildingObject.position != null && buildingObject.position != "") { ?> 
+                        <a href="#" onclick="openMapPosition('<?!= buildingObject.position ?>')"><?!= buildingObject.position ?>&nbsp;<i class="fa fa-map-marker" aria-hidden="true"></i></a>
+                        <? } ?>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="buildingType">類型</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="buildingType" id="buildingType"
+                            value="<?!= buildingObject.buildingType ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="housePattern">格局</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="housePattern" id="housePattern"
+                            value="<?!= buildingObject.housePattern ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="floor">樓層</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="floor" id="floor" value="<?!= buildingObject.floor ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="valuation">開價</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="valuation" id="valuation" value="<?!= buildingObject.valuation ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="landSize">地坪</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="landSize" id="landSize" value="<?!= buildingObject.landSize ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="buildingSize">建坪</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="buildingSize" id="buildingSize"
+                            value="<?!= buildingObject.buildingSize ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="direction">座向</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="direction" id="direction" value="<?!= buildingObject.direction ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="vihecleParkingType">車位</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="vihecleParkingType" id="vihecleParkingType"
+                            value="<?!= buildingObject.vihecleParkingType ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="vihecleParkingNumber">車位號</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="vihecleParkingNumber" id="vihecleParkingNumber"
+                            value="<?!= buildingObject.vihecleParkingNumber ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="waterSupply">水電</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="waterSupply" id="waterSupply"
+                            value="<?!= buildingObject.waterSupply ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="roadNearby">臨路</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="roadNearby" id="roadNearby" value="<?!= buildingObject.roadNearby ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="width">面寬</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="width" id="width" value="<?!= buildingObject.width ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="depth">完成日</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="buildingAge" id="buildingAge" value="<?!= buildingObject.buildingAge ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="memo">備註</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="memo" id="memo" value="<?!= buildingObject.memo ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="contactPerson">聯絡人</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="contactPerson" id="contactPerson"
+                            value="<?!= buildingObject.contactPerson ?>">
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+    </div>
+</div>
+<script>
+    function openMapPosition(position) {
+        var url = "https://www.google.com.tw/maps/place/7QJ2" + encodeURIComponent(position);
+        window.open(url, '_blank');
+    }
+</script>
