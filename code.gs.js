@@ -26,18 +26,18 @@ function doGet(request) {
             return template.evaluate().addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
     }
 }
-function showObjectInfo(objectType, sequenceNumberInSheet) {
+function showObjectInfo(objectType, objectNumber) {
     switch (objectType.toUpperCase()) {
         case 'BUILDING':
             var template = HtmlService.createTemplateFromFile('buildingInfo');
-            var dataString = searchObjectInfo(objectType, sequenceNumberInSheet);
+            var dataString = searchObjectInfo(objectType, objectNumber);
             var buildingObject = JSON.parse(dataString);
             template.buildingObject = buildingObject;
             console.log(JSON.stringify(buildingObject));
             return template.evaluate().getContent();
         case 'LAND':
             var landTemplate = HtmlService.createTemplateFromFile('landInfo');
-            var landDataString = searchObjectInfo(objectType, sequenceNumberInSheet);
+            var landDataString = searchObjectInfo(objectType, objectNumber);
             var landObject = JSON.parse(landDataString);
             landTemplate.landObject = landObject;
             console.log(JSON.stringify(landObject));
@@ -45,11 +45,11 @@ function showObjectInfo(objectType, sequenceNumberInSheet) {
     }
     return "";
 }
-function showObjectA4Info(objectType, sequenceNumberInSheet) {
+function showObjectA4Info(objectType, objectNumber) {
     switch (objectType.toUpperCase()) {
         case 'BUILDING':
             // const buildingTemplate = HtmlService.createTemplateFromFile('buildingA4')
-            var dataString = searchObjectInfo(objectType, sequenceNumberInSheet);
+            var dataString = searchObjectInfo(objectType, objectNumber);
             var buildingObject = JSON.parse(dataString);
             // buildingTemplate.buildingObject = buildingObject
             // console.log(JSON.stringify(buildingObject))
@@ -57,7 +57,7 @@ function showObjectA4Info(objectType, sequenceNumberInSheet) {
         // return buildingTemplate.evaluate()
         case 'LAND':
             // const landTemplate = HtmlService.createTemplateFromFile('landA4')
-            var landDataString = searchObjectInfo(objectType, sequenceNumberInSheet);
+            var landDataString = searchObjectInfo(objectType, objectNumber);
             var landObject = JSON.parse(landDataString);
             // landTemplate.landObject = landObject
             // console.log(JSON.stringify(landObject))
@@ -66,18 +66,37 @@ function showObjectA4Info(objectType, sequenceNumberInSheet) {
     }
     return "";
 }
-function searchObjectInfo(objectType, sequenceNumberInSheet) {
-    var currentSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(objectType);
-    var dataRange = currentSheet === null || currentSheet === void 0 ? void 0 : currentSheet.getDataRange();
-    var values = dataRange === null || dataRange === void 0 ? void 0 : dataRange.getValues();
-    var headers = values === null || values === void 0 ? void 0 : values.shift();
-    var row = values === null || values === void 0 ? void 0 : values.find(function (row) {
-        return values.indexOf(row) === sequenceNumberInSheet - 1;
-    });
-    console.log("row:".concat(row));
-    if (!row) {
-        return "";
+function searchObjectInfo(objectType, objectNumber) {
+    // 1. 快取機制
+    var cache = CacheService.getScriptCache();
+    var cacheKey = "info_".concat(objectType, "_").concat(objectNumber);
+    var cached = cache.get(cacheKey);
+    if (cached) {
+        console.log("Serving info from cache for ".concat(objectNumber));
+        return cached;
     }
+    console.log("Fetching info from sheet for ".concat(objectNumber));
+    // 2. 使用 GQL 查詢
+    var sheetName = objectType;
+    var headersEnum = (sheetName.toUpperCase() === 'BUILDING') ? BuildingHeaders : LnadHeaders;
+    var objectNumberCol = getColumnLetter(headersEnum.OBJECT_NUMBER);
+    var query = "SELECT * WHERE ".concat(objectNumberCol, " = '").concat(objectNumber, "'");
+    var url = "https://docs.google.com/spreadsheets/d/".concat(SPREADSHEET_ID, "/gviz/tq?sheet=").concat(sheetName, "&tq=").concat(encodeURIComponent(query));
+    var response;
+    try {
+        response = UrlFetchApp.fetch(url, { headers: { Authorization: "Bearer ".concat(ScriptApp.getOAuthToken()) } });
+    }
+    catch (e) {
+        console.error("GQL Fetch Error for ".concat(objectNumber, ": ").concat(e));
+        return ""; // 發生錯誤時回傳空字串
+    }
+    var text = response.getContentText();
+    var json = JSON.parse(text.substring(text.indexOf('(') + 1, text.lastIndexOf(')')));
+    if (!json.table || !json.table.rows || json.table.rows.length === 0) {
+        console.log("Object not found: ".concat(objectNumber));
+        return ""; // 找不到物件
+    }
+    var row = json.table.rows[0].c.map(function (cell) { return cell ? (cell.f || cell.v) : null; });
     switch (objectType.toUpperCase()) {
         case 'BUILDING':
             var buildingObject = {
@@ -107,7 +126,9 @@ function searchObjectInfo(objectType, sequenceNumberInSheet) {
                 contractDateFrom: formatDateString(row[LnadHeaders.CONTRACT_DATE_FROM]),
                 contractDateTo: formatDateString(row[LnadHeaders.CONTRACT_DATE_TO])
             };
-            return JSON.stringify(buildingObject);
+            var resultString_1 = JSON.stringify(buildingObject);
+            cache.put(cacheKey, resultString_1, 10800); // 存入快取，3小時
+            return resultString_1;
         // const template = HtmlService.createTemplateFromFile('buildingInfo')
         // template.buildingObject = buildingObject
         // console.log(JSON.stringify(buildingObject))
@@ -140,7 +161,9 @@ function searchObjectInfo(objectType, sequenceNumberInSheet) {
                 contractDateFrom: formatDateString(row[LnadHeaders.CONTRACT_DATE_FROM]),
                 contractDateTo: formatDateString(row[LnadHeaders.CONTRACT_DATE_TO])
             };
-            return JSON.stringify(landObject);
+            var resultString_2 = JSON.stringify(landObject);
+            cache.put(cacheKey, resultString_2, 10800); // 存入快取，3小時
+            return resultString_2;
         // const landTemplate = HtmlService.createTemplateFromFile('landInfo')
         // landTemplate.landObject = landObject
         // console.log(JSON.stringify(landObject))
@@ -323,240 +346,185 @@ var LnadHeaders;
     LnadHeaders[LnadHeaders["CONTRACT_DATE_TO"] = 25] = "CONTRACT_DATE_TO";
     LnadHeaders[LnadHeaders["OBJECT_UPDATE_DATE"] = 26] = "OBJECT_UPDATE_DATE";
 })(LnadHeaders || (LnadHeaders = {}));
+/**
+ * 將欄位索引轉換為 Google Sheet 的欄位字母 (A, B, C...)
+ * @param {number} colIndex - 欄位索引 (0-based).
+ * @returns {string} 欄位字母.
+ */
+function getColumnLetter(colIndex) {
+    var temp, letter = '';
+    var col = colIndex + 1;
+    while (col > 0) {
+        temp = (col - 1) % 26;
+        letter = String.fromCharCode(temp + 65) + letter;
+        col = (col - temp - 1) / 26;
+    }
+    return letter;
+}
 function searchObjects(contractType, objectType, objectPattern, objectNmae, valuationFrom, valuationTo, landSizeFrom, landSizeTo, roadNearby, roomFrom, roomTo, isHasParkingSpace, buildingAgeFrom, buildingAgeTo, direction, objectWidthFrom, objectWidthTo, contactPerson) {
-    var listOfSheet = new Array();
-    if (objectType.toUpperCase() === 'BUILDING' || objectType.toUpperCase() === 'LAND') {
-        var currentSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(objectType);
-        if (currentSheet) {
-            listOfSheet.push(currentSheet);
-        }
+    // 根據所有搜尋參數建立一個快取鍵
+    var cache = CacheService.getScriptCache();
+    var cacheKey = "search_" + JSON.stringify(Array.from(arguments));
+    var cachedResult = cache.get(cacheKey);
+    // 如果快取中已有結果，直接回傳
+    if (cachedResult) {
+        console.log("Serving from cache.");
+        return cachedResult;
+    }
+    console.log("Serving from live query.");
+    var spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheetsToQuery = [];
+    if (objectType) {
+        var sheet = spreadsheet.getSheetByName(objectType);
+        if (sheet)
+            sheetsToQuery.push(sheet);
     }
     else {
-        listOfSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheets();
+        sheetsToQuery = spreadsheet.getSheets();
     }
-    var filteredValues = new Map();
-    var _loop_1 = function (currentSheet) {
-        var dataRange = currentSheet.getDataRange();
-        var values = dataRange.getValues();
-        var headers = values.shift();
-        console.log(objectPattern);
-        currentfilteredValues = values
-            .map(function (row) {
-            var obj = {};
-            obj = [values.indexOf(row) + 1, row];
-            return obj;
-        })
-            .filter(function (row) {
-            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
-            var andConditionList = new Array();
-            var orConditionList = new Array();
-            var roadNearbyRange = roadNearby.split('|');
-            var objectNameKeywordList = objectNmae.split(' ');
-            var sheetName = currentSheet.getName().toUpperCase();
-            switch (sheetName) {
-                case 'BUILDING':
-                    andConditionList.push(((_a = row[1][BuildingHeaders.CONTRACT_TYPE]) === null || _a === void 0 ? void 0 : _a.toString().indexOf(contractType)) > -1);
-                    // andConditionList.push(
-                    //     row[1][BuildingHeaders.OBJECT_NAME]?.toString().indexOf(objectNmae) > -1 ||
-                    //     row[1][BuildingHeaders.LOCATION]?.toString().indexOf(objectNmae) > -1 ||
-                    //     row[1][BuildingHeaders.ADDRESS]?.toString().indexOf(objectNmae) > -1
-                    // )
-                    orConditionList.push(objectNameKeywordList.some(function (keywords) {
-                        var _a;
-                        return ((_a = row[1][LnadHeaders.OBJECT_NUMBER]) === null || _a === void 0 ? void 0 : _a.toString().toLocaleUpperCase().indexOf(keywords.toLocaleUpperCase())) > -1;
-                    }));
-                    orConditionList.push(objectNameKeywordList.some(function (keywords) {
-                        var _a;
-                        return ((_a = row[1][BuildingHeaders.OBJECT_NAME]) === null || _a === void 0 ? void 0 : _a.toString().toLocaleUpperCase().indexOf(keywords.toLocaleUpperCase())) > -1;
-                    }));
-                    orConditionList.push(objectNameKeywordList.some(function (keywords) {
-                        var _a;
-                        return ((_a = row[1][BuildingHeaders.LOCATION]) === null || _a === void 0 ? void 0 : _a.toString().toLocaleUpperCase().indexOf(keywords.toLocaleUpperCase())) > -1;
-                    }));
-                    orConditionList.push(objectNameKeywordList.some(function (keywords) {
-                        var _a;
-                        return ((_a = row[1][BuildingHeaders.ADDRESS]) === null || _a === void 0 ? void 0 : _a.toString().toLocaleUpperCase().indexOf(keywords.toLocaleUpperCase())) > -1;
-                    }));
-                    var buildingUsageList = (_b = row[1][BuildingHeaders.BUILDING_TYPE]) === null || _b === void 0 ? void 0 : _b.toString().split(',');
-                    // andConditionList.push(objectPattern.includes(row[1][BuildingHeaders.BUILDING_TYPE]?.toString()))
-                    andConditionList.push(objectPattern.some(function (pattern) {
-                        return buildingUsageList.includes(pattern);
-                    }));
-                    if (roadNearbyRange && roadNearbyRange.length > 1) {
-                        andConditionList.push(row[1][BuildingHeaders.ROAD_NEARBY] >= roadNearbyRange[0] && row[1][BuildingHeaders.ROAD_NEARBY] <= roadNearbyRange[1]);
+    var allFilteredData = [];
+    for (var _i = 0, sheetsToQuery_1 = sheetsToQuery; _i < sheetsToQuery_1.length; _i++) {
+        var sheet = sheetsToQuery_1[_i];
+        var sheetName = sheet.getName();
+        var headers = (sheetName.toUpperCase() === 'BUILDING') ? BuildingHeaders : LnadHeaders;
+        var queryParts = ['SELECT *'];
+        var whereClauses = [];
+        // 關鍵字查詢 (OR logic)
+        if (objectNmae) {
+            var keywordClauses = objectNmae.split(' ').filter(Boolean).map(function (keyword) {
+                var upperKeyword = keyword.toUpperCase();
+                return "(".concat(getColumnLetter(headers.OBJECT_NUMBER), " contains '").concat(upperKeyword, "' OR ")
+                    + "".concat(getColumnLetter(headers.OBJECT_NAME), " contains '").concat(upperKeyword, "' OR ")
+                    + "".concat(getColumnLetter(headers.LOCATION), " contains '").concat(upperKeyword, "' OR ")
+                    + "".concat(getColumnLetter(headers.ADDRESS), " contains '").concat(upperKeyword, "')");
+            });
+            if (keywordClauses.length > 0) {
+                whereClauses.push("(".concat(keywordClauses.join(' AND '), ")"));
+            }
+        }
+        // 其他 AND 條件
+        if (contractType)
+            whereClauses.push("".concat(getColumnLetter(headers.CONTRACT_TYPE), " = '").concat(contractType, "'"));
+        if (valuationFrom > 0)
+            whereClauses.push("".concat(getColumnLetter(headers.VALUATION), " >= ").concat(valuationFrom));
+        if (valuationTo > 0)
+            whereClauses.push("".concat(getColumnLetter(headers.VALUATION), " <= ").concat(valuationTo));
+        if (landSizeFrom > 0)
+            whereClauses.push("".concat(getColumnLetter(headers.LAND_SIZE), " >= ").concat(landSizeFrom));
+        if (landSizeTo > 0)
+            whereClauses.push("".concat(getColumnLetter(headers.LAND_SIZE), " <= ").concat(landSizeTo));
+        if (direction)
+            whereClauses.push("".concat(getColumnLetter(headers.DIRECTION), " = '").concat(direction, "'"));
+        if (objectWidthFrom > 0)
+            whereClauses.push("".concat(getColumnLetter(headers.WIDTH), " >= ").concat(objectWidthFrom));
+        if (objectWidthTo > 0)
+            whereClauses.push("".concat(getColumnLetter(headers.WIDTH), " <= ").concat(objectWidthTo));
+        if (contactPerson)
+            whereClauses.push("".concat(getColumnLetter(headers.CONTACT_PERSON), " contains '").concat(contactPerson, "'"));
+        if (roadNearby) {
+            var range = roadNearby.split('|');
+            if (range.length > 1) {
+                whereClauses.push("".concat(getColumnLetter(headers.ROAD_NEARBY), " >= ").concat(range[0]));
+                whereClauses.push("".concat(getColumnLetter(headers.ROAD_NEARBY), " <= ").concat(range[1]));
+            }
+        }
+        if (sheetName.toUpperCase() === 'BUILDING') {
+            if (objectPattern && objectPattern.length > 0) {
+                var patternClauses = objectPattern.map(function (p) { return "".concat(getColumnLetter(BuildingHeaders.BUILDING_TYPE), " contains '").concat(p, "'"); });
+                whereClauses.push("(".concat(patternClauses.join(' OR '), ")"));
+            }
+            if (isHasParkingSpace !== '') {
+                var condition = isHasParkingSpace === '1' ? "!= '沒車位'" : "= '沒車位'";
+                whereClauses.push("".concat(getColumnLetter(BuildingHeaders.VIHECLE_PARKING_TYPE), " ").concat(condition));
+            }
+            // 對於無法直接用 GQL 查詢的欄位 (例如需要分割字串)，在後續處理
+        }
+        else if (sheetName.toUpperCase() === 'LAND') {
+            if (objectPattern && objectPattern.length > 0) {
+                var patternClauses = objectPattern.map(function (p) { return "".concat(getColumnLetter(LnadHeaders.LNAD_USAGE), " contains '").concat(p, "'"); });
+                whereClauses.push("(".concat(patternClauses.join(' OR '), ")"));
+            }
+        }
+        if (whereClauses.length > 0) {
+            queryParts.push('WHERE ' + whereClauses.join(' AND '));
+        }
+        var query = queryParts.join(' ');
+        var url = "https://docs.google.com/spreadsheets/d/".concat(SPREADSHEET_ID, "/gviz/tq?sheet=").concat(sheetName, "&tq=").concat(encodeURIComponent(query));
+        var response = UrlFetchApp.fetch(url, { headers: { Authorization: "Bearer ".concat(ScriptApp.getOAuthToken()) } });
+        var text = response.getContentText();
+        var json = JSON.parse(text.substring(text.indexOf('(') + 1, text.lastIndexOf(')')));
+        if (json.table && json.table.rows.length > 0) {
+            var rows = json.table.rows.map(function (r) { return r.c.map(function (cell) { return cell ? (cell.f || cell.v) : null; }); });
+            // 後續過濾 (Post-filtering) for complex conditions
+            var postFilteredRows = rows.filter(function (row) {
+                if (sheetName.toUpperCase() === 'BUILDING') {
+                    if (roomFrom > 0) {
+                        var rooms = (row[BuildingHeaders.HOUSE_PATTERN] || '').toString().split('/')[0];
+                        if (!rooms || parseInt(rooms) < roomFrom)
+                            return false;
                     }
-                    if (valuationFrom > 0) {
-                        andConditionList.push(row[1][BuildingHeaders.VALUATION] >= valuationFrom);
+                    if (roomTo > 0) {
+                        var rooms = (row[BuildingHeaders.HOUSE_PATTERN] || '').toString().split('/')[0];
+                        if (!rooms || parseInt(rooms) > roomTo)
+                            return false;
                     }
-                    if (valuationTo > 0) {
-                        andConditionList.push(row[1][BuildingHeaders.VALUATION] <= valuationTo);
-                    }
-                    if (landSizeFrom > 0) {
-                        andConditionList.push(row[1][BuildingHeaders.LAND_SIZE] >= landSizeFrom);
-                    }
-                    if (landSizeTo > 0) {
-                        andConditionList.push(row[1][BuildingHeaders.LAND_SIZE] <= landSizeTo);
-                    }
-                    var roomOfBuilding = row[1][BuildingHeaders.HOUSE_PATTERN].toString().split('/');
-                    if (roomFrom > 0 && roomOfBuilding.length > 0) {
-                        andConditionList.push(roomOfBuilding[0] >= roomFrom);
-                    }
-                    if (roomTo > 0 && roomOfBuilding.length > 0) {
-                        andConditionList.push(roomOfBuilding[0] <= roomTo);
-                    }
-                    //console.log(`isHasParkingSpace:${isHasParkingSpace}`)
-                    if (isHasParkingSpace !== '') {
-                        var matchCondition = isHasParkingSpace === '1';
-                        console.log("matchCondition:".concat(matchCondition));
-                        console.log("VIHECLE_PARKING_TYPE:".concat((_c = row[1][BuildingHeaders.VIHECLE_PARKING_TYPE]) === null || _c === void 0 ? void 0 : _c.toString().trim()));
-                        console.log("VIHECLE_PARKING_TYPE:".concat(((_d = row[1][BuildingHeaders.VIHECLE_PARKING_TYPE]) === null || _d === void 0 ? void 0 : _d.toString().trim()) != '沒車位'));
-                        andConditionList.push((((_e = row[1][BuildingHeaders.VIHECLE_PARKING_TYPE]) === null || _e === void 0 ? void 0 : _e.toString().trim()) != '沒車位') == matchCondition);
-                    }
-                    // andConditionList.push(row[1][BuildingHeaders.WATER_SUPPLY]?.toString().indexOf(waterSupply) > -1)
-                    andConditionList.push(((_f = row[1][BuildingHeaders.DIRECTION]) === null || _f === void 0 ? void 0 : _f.toString().indexOf(direction)) > -1);
-                    if (objectWidthFrom > 0) {
-                        andConditionList.push(row[1][BuildingHeaders.WIDTH] >= objectWidthFrom);
-                    }
-                    if (objectWidthTo > 0) {
-                        andConditionList.push(row[1][BuildingHeaders.WIDTH] <= objectWidthTo);
-                    }
-                    var buildingAge = ((_g = row[1][BuildingHeaders.BUILDING_AGE]) === null || _g === void 0 ? void 0 : _g.toString().split('/').pop()) || '0';
                     if (buildingAgeFrom > 0) {
-                        andConditionList.push(buildingAge >= buildingAgeFrom);
+                        var age = (row[BuildingHeaders.BUILDING_AGE] || '').toString().split('/').pop();
+                        if (!age || parseInt(age) < buildingAgeFrom)
+                            return false;
                     }
                     if (buildingAgeTo > 0) {
-                        andConditionList.push(buildingAge <= buildingAgeTo);
+                        var age = (row[BuildingHeaders.BUILDING_AGE] || '').toString().split('/').pop();
+                        if (!age || parseInt(age) > buildingAgeTo)
+                            return false;
                     }
-                    andConditionList.push(((_h = row[1][BuildingHeaders.CONTACT_PERSON]) === null || _h === void 0 ? void 0 : _h.toString().indexOf(contactPerson)) > -1);
-                    break;
-                case 'LAND':
-                    andConditionList.push(((_j = row[1][LnadHeaders.CONTRACT_TYPE]) === null || _j === void 0 ? void 0 : _j.toString().indexOf(contractType)) > -1);
-                    // andConditionList.push(
-                    //     row[1][LnadHeaders.OBJECT_NAME]?.toString().indexOf(objectNmae) > -1 ||
-                    //     row[1][LnadHeaders.LOCATION]?.toString().indexOf(objectNmae) > -1 ||
-                    //     row[1][LnadHeaders.ADDRESS]?.toString().indexOf(objectNmae) > -1
-                    // )
-                    orConditionList.push(objectNameKeywordList.some(function (keywords) {
-                        var _a;
-                        return ((_a = row[1][LnadHeaders.OBJECT_NUMBER]) === null || _a === void 0 ? void 0 : _a.toString().toLocaleUpperCase().indexOf(keywords.toLocaleUpperCase())) > -1;
-                    }));
-                    orConditionList.push(objectNameKeywordList.some(function (keywords) {
-                        var _a;
-                        return ((_a = row[1][LnadHeaders.OBJECT_NAME]) === null || _a === void 0 ? void 0 : _a.toString().toLocaleUpperCase().indexOf(keywords.toLocaleUpperCase())) > -1;
-                    }));
-                    orConditionList.push(objectNameKeywordList.some(function (keywords) {
-                        var _a;
-                        return ((_a = row[1][LnadHeaders.LOCATION]) === null || _a === void 0 ? void 0 : _a.toString().toLocaleUpperCase().indexOf(keywords.toLocaleUpperCase())) > -1;
-                    }));
-                    orConditionList.push(objectNameKeywordList.some(function (keywords) {
-                        var _a;
-                        return ((_a = row[1][LnadHeaders.ADDRESS]) === null || _a === void 0 ? void 0 : _a.toString().toLocaleUpperCase().indexOf(keywords.toLocaleUpperCase())) > -1;
-                    }));
-                    var landUsageList = (_k = row[1][LnadHeaders.LNAD_USAGE]) === null || _k === void 0 ? void 0 : _k.toString().split(',');
-                    // andConditionList.push(objectPattern.includes(row[1][LnadHeaders.LNAD_USAGE]?.toString()))
-                    andConditionList.push(objectPattern.some(function (pattern) {
-                        return landUsageList.includes(pattern);
-                    }));
-                    if (roadNearbyRange && roadNearbyRange.length > 1) {
-                        andConditionList.push(row[1][LnadHeaders.ROAD_NEARBY] >= roadNearbyRange[0] && row[1][LnadHeaders.ROAD_NEARBY] <= roadNearbyRange[1]);
-                    }
-                    if (valuationFrom > 0) {
-                        andConditionList.push(row[1][LnadHeaders.VALUATION] >= valuationFrom);
-                    }
-                    if (valuationTo > 0) {
-                        andConditionList.push(row[1][LnadHeaders.VALUATION] <= valuationTo);
-                    }
-                    if (landSizeFrom > 0) {
-                        andConditionList.push(row[1][LnadHeaders.LAND_SIZE] >= landSizeFrom);
-                    }
-                    if (landSizeTo > 0) {
-                        andConditionList.push(row[1][LnadHeaders.LAND_SIZE] <= landSizeTo);
-                    }
-                    // if(waterSupply !== '') {
-                    //     let matchCondition = waterSupply === '1';
-                    //     console.log(`matchCondition:${matchCondition}`)
-                    //     console.log(`WATER_ELECTRICITY_SUPPLY:${row[1][LnadHeaders.WATER_ELECTRICITY_SUPPLY]?.toString().trim()}`)
-                    //     console.log(`WATER_ELECTRICITY_SUPPLY:${row[1][LnadHeaders.WATER_ELECTRICITY_SUPPLY]?.toString().trim() !== ''}`)
-                    //     andConditionList.push((row[1][LnadHeaders.WATER_ELECTRICITY_SUPPLY]?.toString().trim() !== '') == matchCondition)
-                    // }
-                    // andConditionList.push(row[1][LnadHeaders.WATER_ELECTRICITY_SUPPLY]?.toString().indexOf(waterSupply) > -1)
-                    andConditionList.push(((_l = row[1][LnadHeaders.DIRECTION]) === null || _l === void 0 ? void 0 : _l.toString().indexOf(direction)) > -1);
-                    if (objectWidthFrom > 0) {
-                        andConditionList.push(row[1][LnadHeaders.WIDTH] >= objectWidthFrom);
-                    }
-                    if (objectWidthTo > 0) {
-                        andConditionList.push(row[1][LnadHeaders.WIDTH] <= objectWidthTo);
-                    }
-                    andConditionList.push(((_m = row[1][LnadHeaders.CONTACT_PERSON]) === null || _m === void 0 ? void 0 : _m.toString().indexOf(contactPerson)) > -1);
-                    break;
-                default:
-            }
-            andConditionList.forEach(function (value, index) {
-                console.log("".concat(sheetName, ":").concat(index, " ").concat(value));
+                }
+                return true;
             });
-            var orCondition = orConditionList.some(Boolean);
-            console.log("orCondition:".concat(orCondition));
-            return andConditionList.every(Boolean) && orCondition;
-        });
-        filteredValues = filteredValues.set(currentSheet.getName(), currentfilteredValues);
-    };
-    var currentfilteredValues;
-    for (var _i = 0, listOfSheet_1 = listOfSheet; _i < listOfSheet_1.length; _i++) {
-        var currentSheet = listOfSheet_1[_i];
-        _loop_1(currentSheet);
-    }
-    console.log("filteredValues.size:".concat(filteredValues.size));
-    var extractedData = [];
-    Array.from(filteredValues).map(function (_a) {
-        var key = _a[0], filteredData = _a[1];
-        console.log("key:".concat(key, ", filteredData.length:").concat(filteredData.length));
-        var temp = filteredData.map(function (row) {
-            var data = {};
-            switch (key.toUpperCase()) {
-                case 'BUILDING':
-                    data = {
-                        objectType: key,
-                        sequenceNumberInSheet: row[0],
-                        objectNumber: row[1][BuildingHeaders.OBJECT_NUMBER],
-                        objectName: row[1][BuildingHeaders.OBJECT_NAME],
-                        valuation: row[1][BuildingHeaders.VALUATION],
-                        landSize: row[1][BuildingHeaders.LAND_SIZE],
-                        buildingSize: row[1][BuildingHeaders.BUILDING_SIZE],
-                        housePattern: row[1][BuildingHeaders.HOUSE_PATTERN],
-                        position: row[1][BuildingHeaders.POSITION],
-                        location: row[1][BuildingHeaders.LOCATION],
-                        address: row[1][BuildingHeaders.ADDRESS],
-                        pictureLink: row[1][BuildingHeaders.PICTURE_LINK]
+            var extracted = postFilteredRows.map(function (row) {
+                if (sheetName.toUpperCase() === 'BUILDING') {
+                    return {
+                        objectType: sheetName,
+                        objectNumber: row[BuildingHeaders.OBJECT_NUMBER], // Pass objectNumber instead
+                        objectNumber: row[BuildingHeaders.OBJECT_NUMBER],
+                        objectName: row[BuildingHeaders.OBJECT_NAME],
+                        valuation: row[BuildingHeaders.VALUATION],
+                        landSize: row[BuildingHeaders.LAND_SIZE],
+                        buildingSize: row[BuildingHeaders.BUILDING_SIZE],
+                        housePattern: row[BuildingHeaders.HOUSE_PATTERN],
+                        position: row[BuildingHeaders.POSITION],
+                        location: row[BuildingHeaders.LOCATION],
+                        address: row[BuildingHeaders.ADDRESS],
+                        pictureLink: row[BuildingHeaders.PICTURE_LINK]
                     };
-                    break;
-                case 'LAND':
-                    data = {
-                        objectType: key,
-                        sequenceNumberInSheet: row[0],
-                        objectNumber: row[1][LnadHeaders.OBJECT_NUMBER],
-                        objectName: row[1][LnadHeaders.OBJECT_NAME],
-                        valuation: row[1][LnadHeaders.VALUATION],
-                        landSize: row[1][LnadHeaders.LAND_SIZE],
+                }
+                else { // LAND
+                    return {
+                        objectType: sheetName,
+                        objectNumber: row[LnadHeaders.OBJECT_NUMBER], // Pass objectNumber instead
+                        objectNumber: row[LnadHeaders.OBJECT_NUMBER],
+                        objectName: row[LnadHeaders.OBJECT_NAME],
+                        valuation: row[LnadHeaders.VALUATION],
+                        landSize: row[LnadHeaders.LAND_SIZE],
                         buildingSize: 0,
                         housePattern: "",
-                        position: row[1][LnadHeaders.POSITION],
-                        location: row[1][LnadHeaders.LOCATION],
-                        address: row[1][LnadHeaders.ADDRESS],
-                        pictureLink: row[1][LnadHeaders.PICTURE_LINK]
+                        position: row[LnadHeaders.POSITION],
+                        location: row[LnadHeaders.LOCATION],
+                        address: row[LnadHeaders.ADDRESS],
+                        pictureLink: row[LnadHeaders.PICTURE_LINK]
                     };
-                    break;
-                default:
-                    break;
-            }
-            //console.log(data)
-            return data;
-        });
-        // console.log(temp)
-        extractedData = extractedData.concat(temp);
-    });
-    // console.log("BuildingHeaders[0]:" + BuildingHeaders[0])
-    // console.log(extractedData)
-    return JSON.stringify(extractedData);
+                }
+            });
+            allFilteredData = allFilteredData.concat(extracted);
+        }
+    }
+    // 因為 GQL 不回傳原始行號，我們需要重新查找
+    // 為了簡化和效能，這裡暫時將 sequenceNumberInSheet 設為 0
+    // 如果絕對需要行號，需要額外的一次性讀取來建立 map，但會降低效能
+    var resultString = JSON.stringify(allFilteredData);
+    // 將結果存入快取，設定 3 小時過期
+    cache.put(cacheKey, resultString, 10800);
+    return resultString;
 }
 var BuildingObjectData = /** @class */ (function () {
     function BuildingObjectData() {

@@ -336,13 +336,13 @@
                 },
                 { 
                     title: "",
-                    name: "sequenceNumberInSheet",
-                    data: "sequenceNumberInSheet",
+                    name: "objectNumber",
+                    data: "objectNumber",
                     responsivePriority: 1,
                     render: function(data, type, row) {
                         var html = "";
-                        var infoBtn = $("<button>").addClass("btn btn-sm btn-info text-white").text(" 詳細 ").append($("<i>").addClass("fa fa-pencil")).attr("onclick", "showObjectInfo('" + row.objectType + "', '" + data + "')");
-                        var chooseA4Btn = $("<button>").addClass("btn btn-sm btn-dark text-white").text(" 文件 ").append($("<i>").addClass("fa fa-file-text-o")).attr("onclick", "showDocInfo('" + row.objectType + "', '" + data + "')");
+                        var infoBtn = $("<button>").addClass("btn btn-sm btn-info text-white").text(" 詳細 ").append($("<i>").addClass("fa fa-pencil")).attr("onclick", "showObjectInfo('" + row.objectType + "', '" + row.objectNumber + "')");
+                        var chooseA4Btn = $("<button>").addClass("btn btn-sm btn-dark text-white").text(" 文件 ").append($("<i>").addClass("fa fa-file-text-o")).attr("onclick", "showDocInfo('" + row.objectType + "', '" + row.objectNumber + "')");
 
                         var btn_list = {};
                         btn_list[0] = infoBtn;
@@ -430,6 +430,11 @@
                 objectWidthTo,
                 contactPeron);
         });
+
+        $('#showObjectInfoModal').on('hidden.bs.modal', function (e) {
+            $("#showObjectInfoModal .modal-dialog").html('');
+            $("#showObjectInfoModal .modal-dialog").removeClass("modal-xl");
+        });
     });
     
     var onDataFetchSuccess = function(result) {
@@ -445,15 +450,10 @@
         $.unblockUI();
     }
 
-    function showObjectInfo(objectType, sequenceNumberInSheet) {
+    function showObjectInfo(objectType, objectNumber) {
         $("#showObjectInfoModal .modal-dialog").addClass("modal-xl");
         $("#showObjectInfoModal").modal('show');
-        $('#showObjectInfoModal').on('hidden.bs.modal', function (e) {
-            $("#showObjectInfoModal .modal-dialog").html('');
-            $("#showObjectInfoModal .modal-dialog").removeClass("modal-xl");
-        });
-
-        google.script.run.withSuccessHandler(onShowInfoSuccess).withFailureHandler(onShowInfoFailure).showObjectInfo(objectType, sequenceNumberInSheet);
+        google.script.run.withSuccessHandler(onShowInfoSuccess).withFailureHandler(onShowInfoFailure).showObjectInfo(objectType, objectNumber);
     }
 
     var onShowInfoSuccess = function(result) {
@@ -464,8 +464,8 @@
         console.log(result);
     }
 
-    function showDocInfo(objectType, sequenceNumberInSheet) {
-        google.script.run.withSuccessHandler(onShowDocSuccess).withFailureHandler(onShowDocFailure).showObjectA4Info(objectType, sequenceNumberInSheet);
+    function showDocInfo(objectType, objectNumber) {
+        google.script.run.withSuccessHandler(onShowDocSuccess).withFailureHandler(onShowDocFailure).showObjectA4Info(objectType, objectNumber);
         $.blockUI({
             message: "<h1>產生文件中...</h1>",
             css: {
